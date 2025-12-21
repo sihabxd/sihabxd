@@ -4,7 +4,7 @@ on:
   # Run automatically every day at midnight
   schedule:
     - cron: "0 0 * * *"
-  # Allow manual execution via Actions tab
+  # Allow manual execution
   workflow_dispatch:
   # Run on push to main branch
   push:
@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: npm init -y && npm install dayjs fs-extra
 
-      # 5️⃣ Filter SVG to only today’s contributions
+      # 5️⃣ Filter SVGs to only today’s contributions
       - name: Filter SVG to Today Only
         run: |
           node <<'EOF'
@@ -57,18 +57,18 @@ jobs:
 
             let svg = fs.readFileSync(file, 'utf-8');
 
-            // Remove all rects that are not today
+            // Keep only today’s contribution
             svg = svg.replace(/<rect x="(\d+)" y="(\d+)" width="\d+" height="\d+" fill="([^"]+)" data-count="\d+" data-date="([^"]+)"[^>]*>/g, (match, x, y, fill, date) => {
               return date === today ? match : '';
             });
 
-            // Save filtered SVG
-            const newName = file.replace('full-snake', 'daily-snake');
+            // Save filtered SVG with the exact filenames from your <picture> tag
+            const newName = file.includes('dark') ? 'dist/github-contribution-grid-snake-dark.svg' : 'dist/github-contribution-grid-snake.svg';
             fs.writeFileSync(newName, svg, 'utf-8');
           });
           EOF
 
-      # 6️⃣ Push daily-only snake to output branch
+      # 6️⃣ Push daily-only snake SVGs to output branch
       - name: Push daily snake to output branch
         uses: crazy-max/ghaction-github-pages@v3.1.0
         with:
