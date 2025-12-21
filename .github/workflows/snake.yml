@@ -1,80 +1,42 @@
-name: Generate Daily GitHub Snake
+name: Generate Snake
 
 on:
-  # Run automatically every day at midnight
+  # Run automatically every 24 hours
   schedule:
-    - cron: "0 0 * * *"
-  # Allow manual execution
+    - cron: "0 0 * * *" 
+  
+  # Allow manual execution via the Actions tab
   workflow_dispatch:
-  # Run on push to main branch
+  
+  # Run on every push to the main branch
   push:
     branches:
-      - main
+    - main
 
 jobs:
   generate:
-    permissions:
+    permissions: 
       contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 5
+    
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 2️⃣ Setup Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "20"
-
-      # 3️⃣ Generate full snake SVGs
-      - name: Generate GitHub Contribution Snake
+      # Generates a snake game from a github user ($GITHUB_REPOSITORY_OWNER) 
+      # contributions graph, output a svg animation at <output>
+      - name: generate github-contribution-grid-snake.svg
         uses: Platane/snk/svg-only@v3
         with:
-          github_user_name: sihabxd
+          github_user_name: ${{ github.repository_owner }}
           outputs: |
-            dist/full-snake.svg
-            dist/full-snake-dark.svg?palette=github-dark
-
-      # 4️⃣ Install dependencies for filtering SVG
-      - name: Install dependencies
-        run: npm init -y && npm install dayjs fs-extra
-
-      # 5️⃣ Filter SVGs to only today’s contributions
-      - name: Filter SVG to Today Only
-        run: |
-          node <<'EOF'
-          const fs = require('fs-extra');
-          const dayjs = require('dayjs');
-
-          const files = ['dist/full-snake.svg', 'dist/full-snake-dark.svg'];
-          const today = dayjs().format('YYYY-MM-DD');
-
-          files.forEach(file => {
-            if (!fs.existsSync(file)) return;
-
-            let svg = fs.readFileSync(file, 'utf-8');
-
-            // Keep only today’s contribution
-            svg = svg.replace(/<rect x="(\d+)" y="(\d+)" width="\d+" height="\d+" fill="([^"]+)" data-count="\d+" data-date="([^"]+)"[^>]*>/g, (match, x, y, fill, date) => {
-              return date === today ? match : '';
-            });
-
-            // Save filtered SVG with the exact filenames from your <picture> tag
-            const newName = file.includes('dark') ? 'dist/github-contribution-grid-snake-dark.svg' : 'dist/github-contribution-grid-snake.svg';
-            fs.writeFileSync(newName, svg, 'utf-8');
-          });
-          EOF
-
-      # 6️⃣ Push daily-only snake SVGs to output branch
-      - name: Push daily snake to output branch
+            dist/github-contribution-grid-snake.svg
+            dist/github-contribution-grid-snake-dark.svg?palette=github-dark
+          
+      # Push the content of <build_dir> to a branch
+      # The content will be available at https://raw.githubusercontent.com/<github_user>/<repository>/<target_branch>/<file> , or as github page
+      - name: push github-contribution-grid-snake.svg to the output branch
         uses: crazy-max/ghaction-github-pages@v3.1.0
         with:
-          build_dir: dist
           target_branch: output
-          clean: true
-          commit_message: "Update daily GitHub snake 🐍"
+          build_dir: dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
