@@ -1,12 +1,12 @@
-name: Generate Snake
+name: Generate Daily GitHub Snake
 
 on:
-  # Run automatically every 24 hours
+  # Run automatically every day at midnight
   schedule:
-    - cron: "0 0 * * *" 
-  # Allow manual execution via the Actions tab
+    - cron: "0 0 * * *"
+  # Allow manual execution via Actions tab
   workflow_dispatch:
-  # Run on every push to the main branch
+  # Run on push to main branch
   push:
     branches:
       - main
@@ -19,26 +19,62 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      # Checkout the repository
-      - name: Checkout repo
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Generate GitHub contribution snake SVGs
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      # 3️⃣ Generate full snake SVGs
       - name: Generate GitHub Contribution Snake
         uses: Platane/snk/svg-only@v3
         with:
           github_user_name: sihabxd
           outputs: |
-            dist/github-contribution-grid-snake.svg
-            dist/github-contribution-grid-snake-dark.svg?palette=github-dark
+            dist/full-snake.svg
+            dist/full-snake-dark.svg?palette=github-dark
 
-      # Push generated SVGs to the output branch
-      - name: Push to output branch
+      # 4️⃣ Install dependencies for filtering SVG
+      - name: Install dependencies
+        run: npm init -y && npm install dayjs fs-extra
+
+      # 5️⃣ Filter SVG to only today’s contributions
+      - name: Filter SVG to Today Only
+        run: |
+          node <<'EOF'
+          const fs = require('fs-extra');
+          const dayjs = require('dayjs');
+
+          const files = ['dist/full-snake.svg', 'dist/full-snake-dark.svg'];
+          const today = dayjs().format('YYYY-MM-DD');
+
+          files.forEach(file => {
+            if (!fs.existsSync(file)) return;
+
+            let svg = fs.readFileSync(file, 'utf-8');
+
+            // Remove all rects that are not today
+            svg = svg.replace(/<rect x="(\d+)" y="(\d+)" width="\d+" height="\d+" fill="([^"]+)" data-count="\d+" data-date="([^"]+)"[^>]*>/g, (match, x, y, fill, date) => {
+              return date === today ? match : '';
+            });
+
+            // Save filtered SVG
+            const newName = file.replace('full-snake', 'daily-snake');
+            fs.writeFileSync(newName, svg, 'utf-8');
+          });
+          EOF
+
+      # 6️⃣ Push daily-only snake to output branch
+      - name: Push daily snake to output branch
         uses: crazy-max/ghaction-github-pages@v3.1.0
         with:
           build_dir: dist
           target_branch: output
           clean: true
-          commit_message: "Update GitHub contributions snake 🐍"
+          commit_message: "Update daily GitHub snake 🐍"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
